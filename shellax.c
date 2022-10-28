@@ -394,10 +394,21 @@ int process_command(struct command_t *command)
 		command->args[0]=strdup(command->name);
 		// set args[arg_count-1] (last) to NULL
 		command->args[command->arg_count-1]=NULL;
-
+		
+		if (command->next != NULL){
+			pid_t pid_next=fork();
+			if (pid_next==0) // next command exec
+			{
+				process_command(command->next);
+				exit(0);
+				//aslinda burda bi fork daha var 
+			}
+			
+		}			
+		printf("here %d,\n",getpid());	
 		execvp(command->name, command->args); // exec+args+path
 		exit(0);
-		/// TODO: do your own exec with path resolving using execv()
+	/// TODO: do your own exec with path resolving using execv()
 	}
 	else
 	{
