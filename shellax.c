@@ -1,3 +1,5 @@
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdio.h>
@@ -22,6 +24,7 @@ struct command_t {
 	char **args;
 	char *redirects[3]; // in/out redirection
 	struct command_t *next; // for piping
+	int pipe_read_end; // for piping
 };
 
 /**
@@ -45,8 +48,6 @@ void print_command(struct command_t * command)
 		printf("\tPiped to:\n");
 		print_command(command->next);
 	}
-
-
 }
 /**
  * Release allocated memory of a command
@@ -80,7 +81,7 @@ int free_command(struct command_t *command)
 int show_prompt()
 {
 	char cwd[1024], hostname[1024];
-    gethostname(hostname, sizeof(hostname));
+	gethostname(hostname, sizeof(hostname));
 	getcwd(cwd, sizeof(cwd));
 	printf("%s@%s:%s %s$ ", getenv("USER"), hostname, cwd, sysname);
 	return 0;
@@ -181,7 +182,7 @@ int parse_command(char *buf, struct command_t *command)
 
 		// normal arguments
 		if (len>2 && ((arg[0]=='"' && arg[len-1]=='"')
-			|| (arg[0]=='\'' && arg[len-1]=='\''))) // quote wrapped arg
+					|| (arg[0]=='\'' && arg[len-1]=='\''))) // quote wrapped arg
 		{
 			arg[--len]=0;
 			arg++;
@@ -190,6 +191,7 @@ int parse_command(char *buf, struct command_t *command)
 		command->args[arg_index]=(char *)malloc(len+1);
 		strcpy(command->args[arg_index++], arg);
 	}
+	command->pipe_read_end = -1; //default to -1 for checks
 	command->arg_count=arg_index;
 	return 0;
 }
@@ -213,26 +215,26 @@ int prompt(struct command_t *command)
 	char buf[4096];
 	static char oldbuf[4096];
 
-    // tcgetattr gets the parameters of the current terminal
-    // STDIN_FILENO will tell tcgetattr that it should write the settings
-    // of stdin to oldt
-    static struct termios backup_termios, new_termios;
-    tcgetattr(STDIN_FILENO, &backup_termios);
-    new_termios = backup_termios;
-    // ICANON normally takes care that one line at a time will be processed
-    // that means it will return if it sees a "\n" or an EOF or an EOL
-    new_termios.c_lflag &= ~(ICANON | ECHO); // Also disable automatic echo. We manually echo each char.
-    // Those new settings will be set to STDIN
-    // TCSANOW tells tcsetattr to change attributes immediately.
-    tcsetattr(STDIN_FILENO, TCSANOW, &new_termios);
+	// tcgetattr gets the parameters of the current terminal
+	// STDIN_FILENO will tell tcgetattr that it should write the settings
+	// of stdin to oldt
+	static struct termios backup_termios, new_termios;
+	tcgetattr(STDIN_FILENO, &backup_termios);
+	new_termios = backup_termios;
+	// ICANON normally takes care that one line at a time will be processed
+	// that means it will return if it sees a "\n" or an EOF or an EOL
+	new_termios.c_lflag &= ~(ICANON | ECHO); // Also disable automatic echo. We manually echo each char.
+						 // Those new settings will be set to STDIN
+						 // TCSANOW tells tcsetattr to change attributes immediately.
+	tcsetattr(STDIN_FILENO, TCSANOW, &new_termios);
 
 
-    //FIXME: backspace is applied before printing chars
+	//FIXME: backspace is applied before printing chars
 	show_prompt();
 	int multicode_state=0;
 	buf[0]=0;
-  	while (1)
-  	{
+	while (1)
+	{
 		c=getchar();
 		// printf("Keycode: %u\n", c); // DEBUG: uncomment for debugging
 
@@ -287,20 +289,20 @@ int prompt(struct command_t *command)
 			break;
 		if (c==4) // Ctrl+D
 			return EXIT;
-  	}
-  	if (index>0 && buf[index-1]=='\n') // trim newline from the end
-  		index--;
-  	buf[index++]=0; // null terminate string
+	}
+	if (index>0 && buf[index-1]=='\n') // trim newline from the end
+		index--;
+	buf[index++]=0; // null terminate string
 
-  	strcpy(oldbuf, buf);
+	strcpy(oldbuf, buf);
 
-  	parse_command(buf, command);
+	parse_command(buf, command);
 
-  	// print_command(command); // DEBUG: uncomment for debugging
+	//print_command(command); // DEBUG: uncomment for debugging
 
-    // restore the old settings
-    tcsetattr(STDIN_FILENO, TCSANOW, &backup_termios);
-  	return SUCCESS;
+	// restore the old settings
+	tcsetattr(STDIN_FILENO, TCSANOW, &backup_termios);
+	return SUCCESS;
 }
 int process_command(struct command_t *command);
 int main()
@@ -323,7 +325,102 @@ int main()
 	printf("\n");
 	return 0;
 }
+int exec_cmd(struct command_t *command){
+	//redirection for '<'
+	// input is read from a file
+	int fd[2];
+	if (command->redirects[0] != NULL){
+		fd[0] = open(command->redirects[0], O_RDONLY);
+		dup2(fd[0],STDIN_FILENO);
+		close(fd[0]);
+	}
+	//redirection for '>'
+	// output file is created if does not exists
+	// truncated if it does
+	if (command->redirects[1] != NULL){
+		fd[1] = open(command->redirects[1], O_WRONLY|O_CREAT|O_TRUNC, 0644);
+		dup2(fd[1],STDOUT_FILENO);
+		close(fd[1]);
+	}	
+	//redirection for '>>'
+	// output file is created if does not exists
+	// appended if it does
+	if (command->redirects[2] != NULL){
+		fd[1] = open(command->redirects[2], O_WRONLY|O_CREAT|O_APPEND, 0644);
+		dup2(fd[1],STDOUT_FILENO);
+		close(fd[1]);
+	}
 
+	// This shows how to do exec with environ (but is not available on MacOs)
+	// extern char** environ; // environment variables
+	// execvpe(command->name, command->args, environ); // exec+args+path+environ
+
+	/// This shows how to do exec with auto-path resolve
+	// add a NULL argument to the end of args, and the name to the beginning
+	// as required by exec
+
+	// increase args size by 2
+	command->args=(char **)realloc(
+			command->args, sizeof(char *)*(command->arg_count+=2));
+
+	// shift everything forward by 1
+	for (int i=command->arg_count-2;i>0;--i)
+		command->args[i]=command->args[i-1];
+
+	// set args[0] as a copy of name
+	command->args[0]=strdup(command->name);
+	// set args[arg_count-1] (last) to NULL
+	command->args[command->arg_count-1]=NULL;
+
+	execvp(command->name, command->args); // exec+args+path
+	exit(0);
+	/// TODO: do your own exec with path resolving using execv()
+
+}
+int pipe_redirect_cmd(struct command_t *command){
+
+	int fd[2];
+	while(command->next != NULL){
+		pipe(fd);
+		if (fork()==0){
+
+			// if it is not the first cmd of the piped expression (i.e. in the middle)
+			// use previous pipe_read_end to read from
+			if (command->pipe_read_end!= -1 ){
+				//redirect stdin to pipe_read_end
+				dup2(command->pipe_read_end, STDIN_FILENO);
+				close(command->pipe_read_end);	
+			}	
+
+			//redirect stdout to pipe_write
+			dup2(fd[1],STDOUT_FILENO);
+			close(fd[1]);
+
+			exec_cmd(command);
+			return SUCCESS;
+		}
+
+		close(command->next->pipe_read_end);
+		close(fd[1]);
+
+		// give pipe_read to command->next
+		command->next->pipe_read_end = fd[0];
+		command = command->next;
+	}
+
+	// last command of piped expression (if exists)
+	if (command->pipe_read_end != -1){
+		//redirect stdin to pipe_read_end
+		dup2(command->pipe_read_end, STDIN_FILENO);
+		close(command->pipe_read_end);
+	}
+
+	// if there is no pipe, then code will directly follow here
+	exec_cmd(command);
+
+
+
+}
 int process_command(struct command_t *command)
 {
 	int r;
@@ -346,35 +443,12 @@ int process_command(struct command_t *command)
 	pid_t pid=fork();
 	if (pid==0) // child
 	{
-		/// This shows how to do exec with environ (but is not available on MacOs)
-	    // extern char** environ; // environment variables
-		// execvpe(command->name, command->args, environ); // exec+args+path+environ
-
-		/// This shows how to do exec with auto-path resolve
-		// add a NULL argument to the end of args, and the name to the beginning
-		// as required by exec
-
-		// increase args size by 2
-		command->args=(char **)realloc(
-			command->args, sizeof(char *)*(command->arg_count+=2));
-
-		// shift everything forward by 1
-		for (int i=command->arg_count-2;i>0;--i)
-			command->args[i]=command->args[i-1];
-
-		// set args[0] as a copy of name
-		command->args[0]=strdup(command->name);
-		// set args[arg_count-1] (last) to NULL
-		command->args[command->arg_count-1]=NULL;
-
-		execvp(command->name, command->args); // exec+args+path
-		exit(0);
-		/// TODO: do your own exec with path resolving using execv()
+		pipe_redirect_cmd(command);
 	}
 	else
 	{
-    // TODO: implement background processes here
-    wait(0); // wait for child process to finish
+		// TODO: implement background processes here
+		wait(0); // wait for child process to finish
 		return SUCCESS;
 	}
 
