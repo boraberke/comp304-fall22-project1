@@ -24,7 +24,7 @@ struct command_t {
 	char **args;
 	char *redirects[3]; // in/out redirection
 	struct command_t *next; // for piping
-	int *pipe_read_end; // for piping
+	int pipe_read_end; // for piping
 };
 
 /**
@@ -47,9 +47,6 @@ void print_command(struct command_t * command)
 	{
 		printf("\tPiped to:\n");
 		print_command(command->next);
-	}
-	if (command->pipe_read_end){
-		printf("\tReads from:[%d]\n",*command->pipe_read_end);
 	}
 }
 /**
@@ -194,6 +191,7 @@ int parse_command(char *buf, struct command_t *command)
 		command->args[arg_index]=(char *)malloc(len+1);
 		strcpy(command->args[arg_index++], arg);
 	}
+	command->pipe_read_end = -1; //default to -1 for checks
 	command->arg_count=arg_index;
 	return 0;
 }
@@ -300,7 +298,7 @@ int prompt(struct command_t *command)
 
 	parse_command(buf, command);
 
-	print_command(command); // DEBUG: uncomment for debugging
+	//print_command(command); // DEBUG: uncomment for debugging
 
 	// restore the old settings
 	tcsetattr(STDIN_FILENO, TCSANOW, &backup_termios);
@@ -381,41 +379,43 @@ int exec_cmd(struct command_t *command){
 }
 int pipe_redirect_cmd(struct command_t *command){
 
-			int fd[2];
+	int fd[2];
 	while(command->next != NULL){
-			pipe(fd);
+		pipe(fd);
 		if (fork()==0){
-			
-			if (command->pipe_read_end!= NULL){
+
+			// if it is not the first cmd of the piped expression (i.e. in the middle)
+			// use previous pipe_read_end to read from
+			if (command->pipe_read_end!= -1 ){
 				//redirect stdin to pipe_read_end
-				dup2(*command->pipe_read_end, STDIN_FILENO);
-				close(*command->pipe_read_end);	
+				dup2(command->pipe_read_end, STDIN_FILENO);
+				close(command->pipe_read_end);	
 			}	
 
 			//redirect stdout to pipe_write
 			dup2(fd[1],STDOUT_FILENO);
 			close(fd[1]);
-			// give pipe_read to command->next
+
 			exec_cmd(command);
 			return SUCCESS;
 		}
 
-		close(*command->next->pipe_read_end);
+		close(command->next->pipe_read_end);
 		close(fd[1]);
-		command->next->pipe_read_end = &fd[0];
+
+		// give pipe_read to command->next
+		command->next->pipe_read_end = fd[0];
 		command = command->next;
 	}
 
-
+	// last command of piped expression (if exists)
+	if (command->pipe_read_end != -1){
+		//redirect stdin to pipe_read_end
+		dup2(command->pipe_read_end, STDIN_FILENO);
+		close(command->pipe_read_end);
+	}
 
 	// if there is no pipe, then code will directly follow here
-	// similarly for the last command of a piped command, it will directly fall to here
-	if (command->pipe_read_end != NULL){
-		dup2(*command->pipe_read_end, STDIN_FILENO);
-		close(*command->pipe_read_end);
-		printf("pipe read from %d, %s\n", *command->pipe_read_end,command->name);
-	}	
-	printf("exec cmd %s outer\n", command->name);
 	exec_cmd(command);
 
 
@@ -439,7 +439,6 @@ int process_command(struct command_t *command)
 			return SUCCESS;
 		}
 	}
-
 
 	pid_t pid=fork();
 	if (pid==0) // child
