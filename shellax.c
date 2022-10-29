@@ -24,6 +24,7 @@ struct command_t {
 	char **args;
 	char *redirects[3]; // in/out redirection
 	struct command_t *next; // for piping
+	int *pipe_read_end; // for piping
 };
 
 /**
@@ -47,8 +48,9 @@ void print_command(struct command_t * command)
 		printf("\tPiped to:\n");
 		print_command(command->next);
 	}
-
-
+	if (command->pipe_read_end){
+		printf("\tReads from:[%d]\n",*command->pipe_read_end);
+	}
 }
 /**
  * Release allocated memory of a command
@@ -325,7 +327,100 @@ int main()
 	printf("\n");
 	return 0;
 }
+int exec_cmd(struct command_t *command){
+	//redirection for '<'
+	// input is read from a file
+	int fd[2];
+	if (command->redirects[0] != NULL){
+		fd[0] = open(command->redirects[0], O_RDONLY);
+		dup2(fd[0],STDIN_FILENO);
+		close(fd[0]);
+	}
+	//redirection for '>'
+	// output file is created if does not exists
+	// truncated if it does
+	if (command->redirects[1] != NULL){
+		fd[1] = open(command->redirects[1], O_WRONLY|O_CREAT|O_TRUNC, 0644);
+		dup2(fd[1],STDOUT_FILENO);
+		close(fd[1]);
+	}	
+	//redirection for '>>'
+	// output file is created if does not exists
+	// appended if it does
+	if (command->redirects[2] != NULL){
+		fd[1] = open(command->redirects[2], O_WRONLY|O_CREAT|O_APPEND, 0644);
+		dup2(fd[1],STDOUT_FILENO);
+		close(fd[1]);
+	}
 
+	// This shows how to do exec with environ (but is not available on MacOs)
+	// extern char** environ; // environment variables
+	// execvpe(command->name, command->args, environ); // exec+args+path+environ
+
+	/// This shows how to do exec with auto-path resolve
+	// add a NULL argument to the end of args, and the name to the beginning
+	// as required by exec
+
+	// increase args size by 2
+	command->args=(char **)realloc(
+			command->args, sizeof(char *)*(command->arg_count+=2));
+
+	// shift everything forward by 1
+	for (int i=command->arg_count-2;i>0;--i)
+		command->args[i]=command->args[i-1];
+
+	// set args[0] as a copy of name
+	command->args[0]=strdup(command->name);
+	// set args[arg_count-1] (last) to NULL
+	command->args[command->arg_count-1]=NULL;
+
+	execvp(command->name, command->args); // exec+args+path
+	exit(0);
+	/// TODO: do your own exec with path resolving using execv()
+
+}
+int pipe_redirect_cmd(struct command_t *command){
+
+			int fd[2];
+	while(command->next != NULL){
+			pipe(fd);
+		if (fork()==0){
+			
+			if (command->pipe_read_end!= NULL){
+				//redirect stdin to pipe_read_end
+				dup2(*command->pipe_read_end, STDIN_FILENO);
+				close(*command->pipe_read_end);	
+			}	
+
+			//redirect stdout to pipe_write
+			dup2(fd[1],STDOUT_FILENO);
+			close(fd[1]);
+			// give pipe_read to command->next
+			exec_cmd(command);
+			return SUCCESS;
+		}
+
+		close(*command->next->pipe_read_end);
+		close(fd[1]);
+		command->next->pipe_read_end = &fd[0];
+		command = command->next;
+	}
+
+
+
+	// if there is no pipe, then code will directly follow here
+	// similarly for the last command of a piped command, it will directly fall to here
+	if (command->pipe_read_end != NULL){
+		dup2(*command->pipe_read_end, STDIN_FILENO);
+		close(*command->pipe_read_end);
+		printf("pipe read from %d, %s\n", *command->pipe_read_end,command->name);
+	}	
+	printf("exec cmd %s outer\n", command->name);
+	exec_cmd(command);
+
+
+
+}
 int process_command(struct command_t *command)
 {
 	int r;
@@ -349,55 +444,7 @@ int process_command(struct command_t *command)
 	pid_t pid=fork();
 	if (pid==0) // child
 	{
-		//redirection for '<'
-		// input is read from a file
-		int fd[2];
-		if (command->redirects[0] != NULL){
-			fd[0] = open(command->redirects[0], O_RDONLY);
-			dup2(fd[0],STDIN_FILENO);
-			close(fd[0]);
-		}
-		//redirection for '>'
-		// output file is created if does not exists
-		// truncated if it does
-		if (command->redirects[1] != NULL){
-			fd[1] = open(command->redirects[1], O_WRONLY|O_CREAT|O_TRUNC, 0644);
-			dup2(fd[1],STDOUT_FILENO);
-			close(fd[1]);
-		}	
-		//redirection for '>>'
-		// output file is created if does not exists
-		// appended if it does
- 		if (command->redirects[2] != NULL){
-			fd[1] = open(command->redirects[2], O_WRONLY|O_CREAT|O_APPEND, 0644);
-			dup2(fd[1],STDOUT_FILENO);
-			close(fd[1]);
-		}
-
-		// This shows how to do exec with environ (but is not available on MacOs)
-		// extern char** environ; // environment variables
-		// execvpe(command->name, command->args, environ); // exec+args+path+environ
-
-		/// This shows how to do exec with auto-path resolve
-		// add a NULL argument to the end of args, and the name to the beginning
-		// as required by exec
-
-		// increase args size by 2
-		command->args=(char **)realloc(
-				command->args, sizeof(char *)*(command->arg_count+=2));
-
-		// shift everything forward by 1
-		for (int i=command->arg_count-2;i>0;--i)
-			command->args[i]=command->args[i-1];
-
-		// set args[0] as a copy of name
-		command->args[0]=strdup(command->name);
-		// set args[arg_count-1] (last) to NULL
-		command->args[command->arg_count-1]=NULL;
-
-		execvp(command->name, command->args); // exec+args+path
-		exit(0);
-		/// TODO: do your own exec with path resolving using execv()
+		pipe_redirect_cmd(command);
 	}
 	else
 	{
