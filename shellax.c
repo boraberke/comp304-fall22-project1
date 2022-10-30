@@ -473,7 +473,52 @@ int exec_cmd(struct command_t *command){
 			exit(0);
 		}
 	}
-	execvp(command->name, command->args); // exec+args+path
+	//finding the path of a program
+	char true_path[80];
+	//if the program is in the same directory no need for looking for env paths
+	char dr[3];
+	dr[0] = command->name[0];
+	dr[1] = command->name[1];
+	dr[2] = '\0';
+	if (!strcmp(dr,"./")) {
+
+		strcpy(true_path, command->name);
+		
+	} 
+	//if the program is NOT in the same directory, look for env paths
+	else {
+		char path[4096];
+		strcpy(path,getenv("PATH"));
+		char* token = strtok(path, ":");
+		char* paths[500];
+		int i = 0;
+		while (token != NULL) {
+			paths[i] = token;
+			i++;
+			token = strtok(NULL, ":");
+		}
+		paths[i] = "0";
+		//iterating over each path to find the program
+		int j = 0;
+		while (strcmp(paths[j],"0")) {
+			char full_path[80] = "";
+			strcat(full_path,paths[j]);
+			strcat(full_path,"/");
+			strcat(full_path,command->name);
+
+			int code = access(full_path, X_OK);
+			if (!code) {
+				strcpy(true_path, full_path);
+				break;
+			}
+			j++;
+		}
+	}
+	
+	int err = execv(true_path, command->args);
+	if (err == -1) {
+		printf("\nCommand or program not found.\n");
+	}
 	exit(0);
 	/// TODO: do your own exec with path resolving using execv()
 
@@ -548,9 +593,12 @@ int process_command(struct command_t *command)
 	}
 	else
 	{
+		if(!command->background){
 		// TODO: implement background processes here
-		wait(0); // wait for child process to finish
+		wait(0); // wait for child process to finish if it's not background
+		}
 		return SUCCESS;
+	
 	}
 
 	// TODO: your implementation here
