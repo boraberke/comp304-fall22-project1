@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#define NUM_OF_BUILTIN_CMDS 6
 const char * sysname = "shellax";
 
 enum return_codes {
@@ -304,6 +305,31 @@ int prompt(struct command_t *command)
 	tcsetattr(STDIN_FILENO, TCSANOW, &backup_termios);
 	return SUCCESS;
 }
+
+int uniq(char ** args){
+	printf("hi I'm uniq\n");
+}
+int chatroom(char ** args){
+	printf("hi I'm chatroom\n");
+}
+int wiseman(char ** args){
+	printf("hi I'm wiseman\n");
+}
+int customcmd1(char ** args){
+	printf("hi I'm customcmd1\n");
+}
+int customcmd2(char ** args){
+	printf("hi I'm customcmd2\n");
+}
+int psvis(char ** args){
+	printf("hi I'm psvis\n");
+}
+
+typedef int (*builtin_cmd) (char **);
+builtin_cmd builtin_cmds[NUM_OF_BUILTIN_CMDS] =  {&uniq, &chatroom, &wiseman, &customcmd1, &customcmd2, &psvis};
+const char *builtin_cmd_names[NUM_OF_BUILTIN_CMDS] = {"uniq", "chatroom", "wiseman", "customcmd1", "customcmd2", "psvis"};
+
+
 int process_command(struct command_t *command);
 int main()
 {
@@ -371,7 +397,15 @@ int exec_cmd(struct command_t *command){
 	command->args[0]=strdup(command->name);
 	// set args[arg_count-1] (last) to NULL
 	command->args[command->arg_count-1]=NULL;
-
+	
+	// check if the command is a builtin cmd.
+	for(int i=0;i < NUM_OF_BUILTIN_CMDS; i++){
+		if(strcmp(command->name,builtin_cmd_names[i])==0){
+		       // call the function of the command instead, then exit	
+			builtin_cmds[i](command->args);
+			exit(0);
+		}
+	}
 	execvp(command->name, command->args); // exec+args+path
 	exit(0);
 	/// TODO: do your own exec with path resolving using execv()
