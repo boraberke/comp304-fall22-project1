@@ -473,7 +473,36 @@ int exec_cmd(struct command_t *command){
 			exit(0);
 		}
 	}
-	execvp(command->name, command->args); // exec+args+path
+	//finding the path of a program
+	char path[4096];
+	strcpy(path,getenv("PATH"));
+	char* token = strtok(path, ":");
+	char* paths[500];
+	int i = 0;
+	while (token != NULL) {
+		paths[i] = token;
+		i++;
+		token = strtok(NULL, ":");
+	}
+	paths[i] = "0";
+	//iterating over each path to find the program
+	int j = 0;
+	char true_path[80];
+	while (strcmp(paths[j],"0")) {
+		char full_path[80] = "";
+		strcat(full_path,paths[j]);
+		strcat(full_path,"/");
+		strcat(full_path,command->name);
+		printf(full_path);
+		int code = access(full_path, X_OK);
+		if (!code) {
+			strcpy(true_path, full_path);
+			break;
+		}
+		j++;
+	}
+	execv(true_path, command->args);
+	//execvp(command->name, command->args); // exec+args+path
 	exit(0);
 	/// TODO: do your own exec with path resolving using execv()
 
