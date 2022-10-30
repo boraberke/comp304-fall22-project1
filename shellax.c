@@ -306,9 +306,76 @@ int prompt(struct command_t *command)
 	return SUCCESS;
 }
 
-int uniq(char ** args){
-	printf("hi I'm uniq\n");
+// a struct to hold count, line, size of line and the next line in a linked list 
+struct uniq_t {
+	int c; //count
+	char* l; //line
+	ssize_t s; //size of line
+	struct uniq_t *next; //next elt in linked list
+};
+
+// used to construct a new uniq_t from given line and size
+struct uniq_t* cons_new_uniq_t(struct uniq_t* u, char *line,ssize_t nread){
+	u->l = (char *)malloc(sizeof(char) * nread);
+	strcpy(u->l,line);
+	u->c = 1;
+	u->s = nread;
+	u->next = NULL;
+	return u;
 }
+//part 3 - implementation of uniq as a builtin command
+int uniq(char ** args){
+
+	//handle argument -c or --count
+	bool printCount = false;
+	if (args[1]!=NULL){
+		if((strcmp(args[1],"--count")==0) || (strcmp(args[1], "-c")==0)){
+			printCount = true;
+		}}
+
+	char *line = NULL;
+	size_t len = 0;
+	ssize_t nread;
+
+	struct uniq_t *prev_line = malloc(sizeof(struct uniq_t));
+	prev_line->l = NULL;
+	prev_line->c = 0;
+
+	struct uniq_t **unique_lines;
+	memcpy(&prev_line,unique_lines,sizeof(&prev_line));
+
+	while ((nread = getline(&line, &len, stdin)) != -1) {
+		//check the last line, if it is same with the current line, increase the count
+		//	else if not the same, save the last line and count to a list and 
+		//	change the last line to current line with count 1
+
+		if (prev_line->l == NULL){
+			//i.e. first element
+			prev_line = cons_new_uniq_t(prev_line,line, nread);
+		}else if (strcmp(prev_line->l, line) == 0){
+			// element exists, then increase count
+			prev_line->c += 1;
+		}else{
+			//add the newline as next update prev_line with next_line
+			struct uniq_t *next_line = malloc(sizeof(struct uniq_t));
+			next_line = cons_new_uniq_t(next_line,line, nread);
+			prev_line->next = next_line;
+			prev_line = next_line;
+		}	
+	}
+	free(line);
+
+	// print out the result
+	while ((*unique_lines)->next != NULL){
+		*unique_lines = (*unique_lines)->next;
+		if(printCount){
+			printf("\t%d %s",(*unique_lines)->c,(*unique_lines)->l);
+		}else{
+			printf("%s",(*unique_lines)->l);
+		}}
+
+}
+
 int chatroom(char ** args){
 	printf("hi I'm chatroom\n");
 }
@@ -397,11 +464,11 @@ int exec_cmd(struct command_t *command){
 	command->args[0]=strdup(command->name);
 	// set args[arg_count-1] (last) to NULL
 	command->args[command->arg_count-1]=NULL;
-	
+
 	// check if the command is a builtin cmd.
 	for(int i=0;i < NUM_OF_BUILTIN_CMDS; i++){
 		if(strcmp(command->name,builtin_cmd_names[i])==0){
-		       // call the function of the command instead, then exit	
+			// call the function of the command instead, then exit	
 			builtin_cmds[i](command->args);
 			exit(0);
 		}
