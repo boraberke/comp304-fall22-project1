@@ -553,7 +553,7 @@ int process_command(struct command_t *command)
 		wait(0); // wait for child process to finish if it's not background
 		}
 		return SUCCESS;
-	}
+	
 	}
 
 	// TODO: your implementation here
