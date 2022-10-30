@@ -474,35 +474,51 @@ int exec_cmd(struct command_t *command){
 		}
 	}
 	//finding the path of a program
-	char path[4096];
-	strcpy(path,getenv("PATH"));
-	char* token = strtok(path, ":");
-	char* paths[500];
-	int i = 0;
-	while (token != NULL) {
-		paths[i] = token;
-		i++;
-		token = strtok(NULL, ":");
-	}
-	paths[i] = "0";
-	//iterating over each path to find the program
-	int j = 0;
 	char true_path[80];
-	while (strcmp(paths[j],"0")) {
-		char full_path[80] = "";
-		strcat(full_path,paths[j]);
-		strcat(full_path,"/");
-		strcat(full_path,command->name);
-		printf(full_path);
-		int code = access(full_path, X_OK);
-		if (!code) {
-			strcpy(true_path, full_path);
-			break;
+	//if the program is in the same directory no need for looking for env paths
+	char dr[3];
+	dr[0] = command->name[0];
+	dr[1] = command->name[1];
+	dr[2] = '\0';
+	if (!strcmp(dr,"./")) {
+
+		strcpy(true_path, command->name);
+		
+	} 
+	//if the program is NOT in the same directory, look for env paths
+	else {
+		char path[4096];
+		strcpy(path,getenv("PATH"));
+		char* token = strtok(path, ":");
+		char* paths[500];
+		int i = 0;
+		while (token != NULL) {
+			paths[i] = token;
+			i++;
+			token = strtok(NULL, ":");
 		}
-		j++;
+		paths[i] = "0";
+		//iterating over each path to find the program
+		int j = 0;
+		while (strcmp(paths[j],"0")) {
+			char full_path[80] = "";
+			strcat(full_path,paths[j]);
+			strcat(full_path,"/");
+			strcat(full_path,command->name);
+
+			int code = access(full_path, X_OK);
+			if (!code) {
+				strcpy(true_path, full_path);
+				break;
+			}
+			j++;
+		}
 	}
-	execv(true_path, command->args);
-	//execvp(command->name, command->args); // exec+args+path
+	
+	int err = execv(true_path, command->args);
+	if (err == -1) {
+		printf("\nCommand or program not found.\n");
+	}
 	exit(0);
 	/// TODO: do your own exec with path resolving using execv()
 
