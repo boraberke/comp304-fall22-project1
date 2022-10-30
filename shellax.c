@@ -593,7 +593,7 @@ int process_command(struct command_t *command)
 	}
 	else
 	{
-		if(command->background == 0){
+		if(!command->background){
 		// TODO: implement background processes here
 		wait(0); // wait for child process to finish if it's not background
 		}
