@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <time.h>
 #define NUM_OF_BUILTIN_CMDS 6
 const char * sysname = "shellax";
 
@@ -331,7 +332,8 @@ int uniq(char ** args){
 	if (args[1]!=NULL){
 		if((strcmp(args[1],"--count")==0) || (strcmp(args[1], "-c")==0)){
 			printCount = true;
-		}}
+		}
+	}
 
 	char *line = NULL;
 	size_t len = 0;
@@ -382,8 +384,53 @@ int chatroom(char ** args){
 int wiseman(char ** args){
 	printf("hi I'm wiseman\n");
 }
-int customcmd1(char ** args){
-	printf("hi I'm customcmd1\n");
+int dance(char ** args){
+	
+	int type = atoi(args[1]);
+	int count = atoi(args[2]) - 1;
+	int i;
+	char dance_l[50];
+	char dance_r[50];
+	
+	printf("༼ つ ◕_◕ ༽つ    ");
+	fflush(stdout);
+	sleep(1);
+	printf("(\r づ｡ ◕‿‿◕｡)づ    ");
+	fflush(stdout);
+	sleep(1);
+	if (type == 1) {
+		strcpy(dance_l, "(ﾉ◕ ヮ◕ )ﾉ*:･ﾟ✧     ");
+		strcpy(dance_r, "✧ﾟ･: *ヽ(◕ ヮ◕ヽ)   ");
+	}
+
+	if (type == 2) {
+		strcpy(dance_l, "(~˘▾˘)~         ");
+		strcpy(dance_r, "~(˘▾˘~)         ");
+	}
+
+	if (type == 3) {
+		strcpy(dance_l, "☜(⌒▽⌒)☞        ");
+		strcpy(dance_r, "☝(⌒▽⌒)☝        ");
+	}
+
+	printf("\r%s", dance_l);
+	fflush(stdout);
+	for (i = 0; i < count; i++) {
+
+		printf("\r%s", dance_r);
+		fflush(stdout);
+		sleep(1);
+		printf("\r%s", dance_l);
+		fflush(stdout);
+		sleep(1);
+
+	}
+	printf("\r%s", dance_r);
+	fflush(stdout);
+	sleep(1);
+	printf("\rヾ(⌐■_■)ノ♪       \n");
+	fflush(stdout);
+	
 }
 int customcmd2(char ** args){
 	printf("hi I'm customcmd2\n");
@@ -393,8 +440,8 @@ int psvis(char ** args){
 }
 
 typedef int (*builtin_cmd) (char **);
-builtin_cmd builtin_cmds[NUM_OF_BUILTIN_CMDS] =  {&uniq, &chatroom, &wiseman, &customcmd1, &customcmd2, &psvis};
-const char *builtin_cmd_names[NUM_OF_BUILTIN_CMDS] = {"uniq", "chatroom", "wiseman", "customcmd1", "customcmd2", "psvis"};
+builtin_cmd builtin_cmds[NUM_OF_BUILTIN_CMDS] =  {&uniq, &chatroom, &wiseman, &dance, &customcmd2, &psvis};
+const char *builtin_cmd_names[NUM_OF_BUILTIN_CMDS] = {"uniq", "chatroom", "wiseman", "dance", "customcmd2", "psvis"};
 
 
 int process_command(struct command_t *command);
@@ -487,9 +534,12 @@ int exec_cmd(struct command_t *command){
 	} 
 	//if the program is NOT in the same directory, look for env paths
 	else {
-		char path[4096];
-		strcpy(path,getenv("PATH"));
+		char* buffer = getenv("PATH");
+		int len = strlen(buffer);
+		char* path = malloc(len*sizeof(char));
+		strcpy(path, buffer);
 		char* token = strtok(path, ":");
+		
 		char* paths[500];
 		int i = 0;
 		while (token != NULL) {
@@ -497,6 +547,7 @@ int exec_cmd(struct command_t *command){
 			i++;
 			token = strtok(NULL, ":");
 		}
+		free(path);
 		paths[i] = "0";
 		//iterating over each path to find the program
 		int j = 0;
@@ -514,7 +565,7 @@ int exec_cmd(struct command_t *command){
 			j++;
 		}
 	}
-	
+
 	int err = execv(true_path, command->args);
 	if (err == -1) {
 		printf("\nCommand or program not found.\n");
