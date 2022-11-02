@@ -453,33 +453,31 @@ int chatroom(char ** args){
 	int fd1;
 	char str1[buf_size*2], str2[buf_size*2];
 
+	if(fork() == 0){
+		while(1){
+
+		printf("%s: <write your message>",user_name);
+		fgets(str2, buf_size*2, stdin);
+			for(int j=0;j<i;j++){
+				fd1 = open(pipe_paths[j],O_WRONLY);
+				write(fd1, str2, strlen(str2)+1);
+				close(fd1);
+			}	
+		}
+	}
 
 	while (1)
 	{
-		printf("%s: <write your message>",user_name);
-		fgets(str2, buf_size*2, stdin);
-		// wait for the input from the user:
-		for(int j=0;j<i;j++){
-			// Now open in write mode for each pipe and write
-			// string taken from user.
-			if(fork() == 0){
-			fd1 = open(pipe_paths[j],O_WRONLY);
-			write(fd1, str2, strlen(str2)+1);
-			close(fd1);
-			exit(0);
-			}
-			
-		}
-				// First read from it's own path
-		fd1 = open(user_path,O_RDONLY);
-		read(fd1, str1, buf_size*2);
+	fd1 = open(user_path,O_RDONLY);
+	read(fd1, str1, buf_size*2);
+	// Print the read and close 
+	printf("\r%s\n", str1);
+	}
 
-		// Print the read and close 
-		printf("%s\n", str1);
-		close(fd1);
+	close(fd1);
 
-	
-	}	
+
+
 
 }
 int wiseman(char ** args){
