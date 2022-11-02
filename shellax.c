@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <time.h>
 #define NUM_OF_BUILTIN_CMDS 6
+#define ROOM_CAPACITY 20
 const char * sysname = "shellax";
 
 enum return_codes {
@@ -381,10 +382,15 @@ int uniq(char ** args){
 }
 
 int chatroom(char ** args){
+	//check if args are given
 	if (args[1] ==NULL || args[2]==NULL){
 		printf("Invalid syntax, correct syntax: chatroom <room> <username>\n");
 		exit(1);
 	}
+
+	int buf_size = 512;
+	//create room and pipe if does not exist.
+
 	char *tmp = "/tmp/";
 	int len = strlen(args[1]);
 
@@ -395,30 +401,45 @@ int chatroom(char ** args){
 	char* user_name = malloc(len*sizeof(char));
 	strcpy(user_name, args[2]);
 
-	char room_path[256];
-	snprintf(room_path, sizeof(room_path), "%s%s", tmp, room_name);	
+	char room_path[buf_size];
+	snprintf(room_path, sizeof(room_path), "%s%s/", tmp, room_name);	
 	DIR* room= opendir(room_path);
+	struct dirent *dir;
+
+	char *pipe_paths[ROOM_CAPACITY];
+	int i = 0;
 	if (room) {
-		/* room exists. */
+		//get the other fifo's into pipe_paths
+		while ((dir = readdir(room)) != NULL) {
+			if(dir->d_type == DT_FIFO){
+				printf("%s\n", dir->d_name);
+				char *temp_path = malloc(buf_size);
+				snprintf(temp_path,buf_size,"%s%s",room_path,dir->d_name);	
+				//strcpy(pipe_paths[i], temp_path);
+				pipe_paths[i] = temp_path;
+				i++;
+			}
+		}
 		closedir(room);
 	} else if (ENOENT == errno) {
 		/* room does not exist, create one. */
 		mkdir(room_path,0777);
-		printf("new room %s has been created.\n",room_name);
 	} else {
 		/* failed for some other reason. */
 		printf("problem with opening directory.\n");
 		exit(1);
 	}
 
-	char user_path[1024];
-	snprintf(user_path, sizeof(user_path), "%s%s%s", room_path,"/", user_name);
-	
+	char user_path[buf_size];
+	snprintf(user_path, sizeof(user_path), "%s%s", room_path, user_name);
+
 	int pipe_check = mkfifo(user_path, 0666);
 
 	if (!pipe_check) {
-		/* room exists. */
-		printf("fifo has been created.\n");
+		// pipe has been created
+		// add it to pipe_paths
+		pipe_paths[i] = user_path;
+		i++;
 	} else if (EEXIST == errno) {
 		/* named pipe exist, continue. */
 		printf("named pipe exists.\n");
@@ -428,12 +449,38 @@ int chatroom(char ** args){
 		exit(1);
 	}
 
+	//start reading from pipe and writing to other pipes.
+	int fd1;
+	char str1[buf_size*2], str2[buf_size*2];
 
 
+	while (1)
+	{
+		printf("%s: <write your message>",user_name);
+		fgets(str2, buf_size*2, stdin);
+		// wait for the input from the user:
+		for(int j=0;j<i;j++){
+			// Now open in write mode for each pipe and write
+			// string taken from user.
+			if(fork() == 0){
+			fd1 = open(pipe_paths[j],O_WRONLY);
+			write(fd1, str2, strlen(str2)+1);
+			close(fd1);
+			exit(0);
+			}
+			
+		}
+				// First read from it's own path
+		fd1 = open(user_path,O_RDONLY);
+		read(fd1, str1, buf_size*2);
 
-	printf("user_path: %s, user_name:%s\n",user_path,user_name);
+		// Print the read and close 
+		printf("%s\n", str1);
+		close(fd1);
+
 	
-	printf("hi I'm chatroom\n");
+	}	
+
 }
 int wiseman(char ** args){
 	printf("hi I'm wiseman\n");
