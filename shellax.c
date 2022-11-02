@@ -374,7 +374,8 @@ int uniq(char ** args){
 			printf("\t%d %s",(*unique_lines)->c,(*unique_lines)->l);
 		}else{
 			printf("%s",(*unique_lines)->l);
-		}}
+		}
+	}
 
 }
 
@@ -382,7 +383,12 @@ int chatroom(char ** args){
 	printf("hi I'm chatroom\n");
 }
 int wiseman(char ** args){
-	printf("hi I'm wiseman\n");
+	int interval = atoi(args[1]);
+	struct command_t *command = malloc(sizeof(struct command_t));
+	memset(command, 0, sizeof(struct command_t));
+	char* buff = "fortune | espeak";
+	parse_command(buff, command);
+
 }
 int dance(char ** args){
 	
@@ -392,11 +398,10 @@ int dance(char ** args){
 	char dance_l[50];
 	char dance_r[50];
 	
+	setbuf(stdout, NULL); //the printfs wouldn't work properly.
 	printf("༼ つ ◕_◕ ༽つ    ");
-	fflush(stdout);
 	sleep(1);
 	printf("(\r づ｡ ◕‿‿◕｡)づ    ");
-	fflush(stdout);
 	sleep(1);
 	if (type == 1) {
 		strcpy(dance_l, "(ﾉ◕ ヮ◕ )ﾉ*:･ﾟ✧     ");
@@ -404,33 +409,28 @@ int dance(char ** args){
 	}
 
 	if (type == 2) {
-		strcpy(dance_l, "(~˘▾˘)~         ");
-		strcpy(dance_r, "~(˘▾˘~)         ");
+		strcpy(dance_l, "(~˘▾˘)~            ");
+		strcpy(dance_r, "~(˘▾˘~)            ");
 	}
 
 	if (type == 3) {
-		strcpy(dance_l, "☜(⌒▽⌒)☞        ");
-		strcpy(dance_r, "☝(⌒▽⌒)☝        ");
+		strcpy(dance_l, "☜(⌒▽⌒)☞            ");
+		strcpy(dance_r, "☝(⌒▽⌒)☝            ");
 	}
 
 	printf("\r%s", dance_l);
-	fflush(stdout);
 	for (i = 0; i < count; i++) {
 
 		printf("\r%s", dance_r);
-		fflush(stdout);
 		sleep(1);
 		printf("\r%s", dance_l);
-		fflush(stdout);
 		sleep(1);
 
 	}
 	printf("\r%s", dance_r);
-	fflush(stdout);
 	sleep(1);
-	printf("\rヾ(⌐■_■)ノ♪       \n");
-	fflush(stdout);
-	
+	printf("\rヾ(⌐■ _■ )ノ♪       \n");
+	sleep(1);
 }
 int customcmd2(char ** args){
 	printf("hi I'm customcmd2\n");
