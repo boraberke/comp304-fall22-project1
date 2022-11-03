@@ -382,19 +382,20 @@ int uniq(char ** args){
 }
 
 int chatroom(char ** args){
+	//disable buffer in stdout
 	setbuf(stdout,NULL);
-	//check if args are given
+
+	//check if args are given correctly
 	if (args[1] ==NULL || args[2]==NULL){
 		printf("Invalid syntax, correct syntax: chatroom <room> <username>\n");
 		exit(1);
 	}
 
 	int buf_size = 512;
-	//create room and pipe if does not exist.
 
 	char *tmp = "/tmp/";
-	int len = strlen(args[1]);
 
+	int len = strlen(args[1]);
 	char* room_name = malloc(len*sizeof(char));
 	strcpy(room_name, args[1]);
 
@@ -404,6 +405,11 @@ int chatroom(char ** args){
 
 	char room_path[buf_size];
 	snprintf(room_path, sizeof(room_path), "%s%s/", tmp, room_name);	
+
+	char user_path[buf_size];
+	snprintf(user_path, sizeof(user_path), "%s%s", room_path, user_name);
+
+	//create room and pipe if does not exist.
 	DIR* room= opendir(room_path);
 	struct dirent *dir;
 
@@ -411,18 +417,6 @@ int chatroom(char ** args){
 	int i = 0;
 	if (room) {
 		printf("Welcome to %s!\n",room_name);
-		//get the other fifo's into pipe_paths
-		while ((dir = readdir(room)) != NULL) {
-			if(dir->d_type == DT_FIFO){
-				if(strcmp(dir->d_name,user_name)==0){
-					continue;
-				}
-				char *temp_path = malloc(buf_size);
-				snprintf(temp_path,buf_size,"%s%s",room_path,dir->d_name);	
-				pipe_paths[i] = temp_path;
-				i++;
-			}
-		}
 		closedir(room);
 	} else if (ENOENT == errno) {
 		/* room does not exist, create one. */
@@ -433,11 +427,8 @@ int chatroom(char ** args){
 		exit(1);
 	}
 
-	char user_path[buf_size];
-	snprintf(user_path, sizeof(user_path), "%s%s", room_path, user_name);
 
 	int pipe_check = mkfifo(user_path, 0666);
-
 	if (pipe_check && EEXIST != errno) {
 		/* failed for some other reason. */
 		printf("problem with named pipe.\n");
@@ -446,40 +437,60 @@ int chatroom(char ** args){
 
 	//start reading from pipe and writing to other pipes.
 	int fd1;
-	char str1[buf_size*2], str2[buf_size*2];
+	char r_end[buf_size*2], w_end[buf_size*2];
 
 	if(fork() == 0){
 		while(1){
+			//read all the users in the room
+			DIR* room= opendir(room_path);
+			struct dirent *dir;
 
-		printf("%s: <write your message>",user_name);
-		fgets(str2, buf_size*2, stdin);
-		// add room name and user name in front
-		char message_to_send[buf_size*3];
-		snprintf(message_to_send, sizeof(message_to_send), "[%s] %s: %s", room_name, user_name, str2);
-		//print your message here	
-		printf("\033[A\r%*s",250,"");
-		printf("\033[A\r%s",message_to_send);
-		for(int j=0;j<i;j++){
-				fd1 = open(pipe_paths[j],O_WRONLY);
-				
-				//strtok(message_to_send,"\n");		
-				write(fd1, message_to_send, strlen(message_to_send)+1);
-				close(fd1);
-			}	
+			printf("%s: <write your message>",user_name);
+			fgets(w_end, buf_size*2, stdin);
+
+			// add room name and user name in front
+			char message_to_send[buf_size*3];
+			snprintf(message_to_send, sizeof(message_to_send), "[%s] %s: %s", room_name, user_name, w_end);
+
+			//print your sent message here	
+			printf("\033[A\r%*s",250,"");
+			printf("\033[A\r%s",message_to_send);
+			if (room) {
+				while ((dir = readdir(room)) != NULL) {
+					if(dir->d_type == DT_FIFO){
+						if(strcmp(dir->d_name,user_name)==0){
+							continue;
+						}
+						//open fifo and write the message
+						char *fifo_path = malloc(buf_size);
+						snprintf(fifo_path,buf_size,"%s%s",room_path,dir->d_name);
+						fd1 = open(fifo_path,O_WRONLY);
+						write(fd1, message_to_send, strlen(message_to_send)+1);
+						close(fd1);
+
+					}
+				}
+				closedir(room);
+			} else {
+				/* failed for some other reason. */
+				printf("problem with opening directory.\n");
+				exit(1);
+			}
+
 		}
 	}
 
 	while (1)
 	{
-	fd1 = open(user_path,O_RDONLY);
-	read(fd1, str1, buf_size*2);
-	// Print the read and close 
+		fd1 = open(user_path,O_RDONLY);
+		read(fd1, r_end, buf_size*2);
+		// Print the read and close 
 		printf("\r%*s",250,"");
-		printf("\033[A\r%s",str1);
+		printf("\033[A\r%s",r_end);
 		printf("%s: <write your message>",user_name);
+		close(fd1);
 	}
 
-	close(fd1);
 
 
 
