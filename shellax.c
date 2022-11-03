@@ -761,7 +761,8 @@ int process_command(struct command_t *command)
 	{
 		if(!command->background){
 			// TODO: implement background processes here
-			wait(0); // wait for child process to finish if it's not background
+			int status;
+			waitpid(pid, &status, 0); // wait for child process to finish if it's not background
 		}
 		return SUCCESS;
 
