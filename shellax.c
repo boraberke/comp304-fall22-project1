@@ -377,7 +377,8 @@ int uniq(char ** args){
 			printf("\t%d %s",(*unique_lines)->c,(*unique_lines)->l);
 		}else{
 			printf("%s",(*unique_lines)->l);
-		}}
+		}
+	}
 
 }
 
@@ -489,23 +490,33 @@ int chatroom(char ** args){
 		printf("%s: <write your message>",user_name);
 		close(fd1);
 	}
+
 }
-int wiseman(char ** args){
-	printf("hi I'm wiseman\n");
+int wiseman(char ** args) {
+	int interval = atoi(args[1]);
+	char buff[50];
+	//preparing the text file to send over to crontab
+	sprintf(buff, "*/%d * * * * fortune | espeak\n", interval);
+	char* file_name = "crontab.txt";
+	FILE* file = fopen(file_name, "w");
+	fprintf(file, buff);
+	fclose(file);
+	execlp("crontab", "crontab", file_name, NULL);
+
 }
-int dance(char ** args){
+
+int dance(char ** args) {
 
 	int type = atoi(args[1]);
 	int count = atoi(args[2]) - 1;
 	int i;
 	char dance_l[50];
 	char dance_r[50];
-
+	
+	setbuf(stdout, NULL); //the printfs wouldn't work properly.
 	printf("༼ つ ◕_◕ ༽つ    ");
-	fflush(stdout);
 	sleep(1);
-	printf("(\r づ｡ ◕‿‿◕｡)づ    ");
-	fflush(stdout);
+	printf("(\r づ｡ ◕‿‿◕ ｡)づ    ");
 	sleep(1);
 	if (type == 1) {
 		strcpy(dance_l, "(ﾉ◕ ヮ◕ )ﾉ*:･ﾟ✧     ");
@@ -513,33 +524,28 @@ int dance(char ** args){
 	}
 
 	if (type == 2) {
-		strcpy(dance_l, "(~˘▾˘)~         ");
-		strcpy(dance_r, "~(˘▾˘~)         ");
+		strcpy(dance_l, "(~˘▾˘)~            ");
+		strcpy(dance_r, "~(˘▾˘~)            ");
 	}
 
 	if (type == 3) {
-		strcpy(dance_l, "☜(⌒▽⌒)☞        ");
-		strcpy(dance_r, "☝(⌒▽⌒)☝        ");
+		strcpy(dance_l, "☜(⌒▽⌒)☞            ");
+		strcpy(dance_r, "☝(⌒▽⌒)☝            ");
 	}
 
 	printf("\r%s", dance_l);
-	fflush(stdout);
 	for (i = 0; i < count; i++) {
 
 		printf("\r%s", dance_r);
-		fflush(stdout);
 		sleep(1);
 		printf("\r%s", dance_l);
-		fflush(stdout);
 		sleep(1);
 
 	}
 	printf("\r%s", dance_r);
-	fflush(stdout);
 	sleep(1);
-	printf("\rヾ(⌐■_■)ノ♪       \n");
-	fflush(stdout);
-
+	printf("\rヾ(⌐■ _■ )ノ♪       \n");
+	sleep(1);
 }
 int customcmd2(char ** args){
 	printf("hi I'm customcmd2\n");
