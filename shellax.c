@@ -384,9 +384,8 @@ int chatroom(char ** args) {
 }
 int wiseman(char ** args) {
 	int interval = atoi(args[1]);
-	struct command_t *command = malloc(sizeof(struct command_t));
-	memset(command, 0, sizeof(struct command_t));
 	char buff[50];
+	//preparing the text file to send over to crontab
 	sprintf(buff, "*/%d * * * * fortune | espeak\n", interval);
 	char* file_name = "crontab.txt";
 	FILE* file = fopen(file_name, "w");
