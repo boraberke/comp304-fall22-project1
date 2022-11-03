@@ -379,18 +379,23 @@ int uniq(char ** args){
 
 }
 
-int chatroom(char ** args){
+int chatroom(char ** args) {
 	printf("hi I'm chatroom\n");
 }
-int wiseman(char ** args){
+int wiseman(char ** args) {
 	int interval = atoi(args[1]);
 	struct command_t *command = malloc(sizeof(struct command_t));
 	memset(command, 0, sizeof(struct command_t));
-	char* buff = "fortune | espeak";
-	parse_command(buff, command);
+	char buff[50];
+	sprintf(buff, "*/%d * * * * fortune | espeak\n", interval);
+	char* file_name = "crontab.txt";
+	FILE* file = fopen(file_name, "w");
+	fprintf(file, buff);
+	fclose(file);
+	execlp("crontab", "crontab", file_name, NULL);
 
 }
-int dance(char ** args){
+int dance(char ** args) {
 	
 	int type = atoi(args[1]);
 	int count = atoi(args[2]) - 1;
@@ -401,7 +406,7 @@ int dance(char ** args){
 	setbuf(stdout, NULL); //the printfs wouldn't work properly.
 	printf("༼ つ ◕_◕ ༽つ    ");
 	sleep(1);
-	printf("(\r づ｡ ◕‿‿◕｡)づ    ");
+	printf("(\r づ｡ ◕‿‿◕ ｡)づ    ");
 	sleep(1);
 	if (type == 1) {
 		strcpy(dance_l, "(ﾉ◕ ヮ◕ )ﾉ*:･ﾟ✧     ");
