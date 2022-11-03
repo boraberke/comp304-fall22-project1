@@ -461,6 +461,8 @@ int chatroom(char ** args){
 		printf("\033[A\r%s",message_to_send);
 		for(int j=0;j<i;j++){
 				fd1 = open(pipe_paths[j],O_WRONLY);
+				
+				//strtok(message_to_send,"\n");		
 				write(fd1, message_to_send, strlen(message_to_send)+1);
 				close(fd1);
 			}	
@@ -473,7 +475,7 @@ int chatroom(char ** args){
 	read(fd1, str1, buf_size*2);
 	// Print the read and close 
 		printf("\r%*s",250,"");
-		printf("\r%s",str1);
+		printf("\033[A\r%s",str1);
 		printf("%s: <write your message>",user_name);
 	}
 
