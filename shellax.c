@@ -413,7 +413,6 @@ int chatroom(char ** args){
 	DIR* room= opendir(room_path);
 	struct dirent *dir;
 
-	char *pipe_paths[ROOM_CAPACITY];
 	int i = 0;
 	if (room) {
 		printf("Welcome to %s!\n",room_name);
@@ -490,11 +489,6 @@ int chatroom(char ** args){
 		printf("%s: <write your message>",user_name);
 		close(fd1);
 	}
-
-
-
-
-
 }
 int wiseman(char ** args){
 	printf("hi I'm wiseman\n");
