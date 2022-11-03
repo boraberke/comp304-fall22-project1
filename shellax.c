@@ -1,4 +1,6 @@
 #include <sys/stat.h>
+#include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -10,6 +12,7 @@
 #include <errno.h>
 #include <time.h>
 #define NUM_OF_BUILTIN_CMDS 6
+#define ROOM_CAPACITY 20
 const char * sysname = "shellax";
 
 enum return_codes {
@@ -379,19 +382,125 @@ int uniq(char ** args){
 }
 
 int chatroom(char ** args){
-	printf("hi I'm chatroom\n");
+	//disable buffer in stdout
+	setbuf(stdout,NULL);
+
+	//check if args are given correctly
+	if (args[1] ==NULL || args[2]==NULL){
+		printf("Invalid syntax, correct syntax: chatroom <room> <username>\n");
+		exit(1);
+	}
+
+	int buf_size = 512;
+
+	char *tmp = "/tmp/";
+
+	int len = strlen(args[1]);
+	char* room_name = malloc(len*sizeof(char));
+	strcpy(room_name, args[1]);
+
+	len = strlen(args[2]);
+	char* user_name = malloc(len*sizeof(char));
+	strcpy(user_name, args[2]);
+
+	char room_path[buf_size];
+	snprintf(room_path, sizeof(room_path), "%s%s/", tmp, room_name);	
+
+	char user_path[buf_size];
+	snprintf(user_path, sizeof(user_path), "%s%s", room_path, user_name);
+
+	//create room and pipe if does not exist.
+	DIR* room= opendir(room_path);
+	struct dirent *dir;
+
+	int i = 0;
+	if (room) {
+		printf("Welcome to %s!\n",room_name);
+		closedir(room);
+	} else if (ENOENT == errno) {
+		/* room does not exist, create one. */
+		mkdir(room_path,0777);
+	} else {
+		/* failed for some other reason. */
+		printf("problem with opening directory.\n");
+		exit(1);
+	}
+
+
+	int pipe_check = mkfifo(user_path, 0666);
+	if (pipe_check && EEXIST != errno) {
+		/* failed for some other reason. */
+		printf("problem with named pipe.\n");
+		exit(1);
+	}
+
+	//start reading from pipe and writing to other pipes.
+	int fd1;
+	char r_end[buf_size*2], w_end[buf_size*2];
+
+	if(fork() == 0){
+		while(1){
+			//read all the users in the room
+			DIR* room= opendir(room_path);
+			struct dirent *dir;
+
+			printf("%s: <write your message>",user_name);
+			fgets(w_end, buf_size*2, stdin);
+
+			// add room name and user name in front
+			char message_to_send[buf_size*3];
+			snprintf(message_to_send, sizeof(message_to_send), "[%s] %s: %s", room_name, user_name, w_end);
+
+			//print your sent message here	
+			printf("\033[A\r%*s",250,"");
+			printf("\033[A\r%s",message_to_send);
+			if (room) {
+				while ((dir = readdir(room)) != NULL) {
+					if(dir->d_type == DT_FIFO){
+						if(strcmp(dir->d_name,user_name)==0){
+							continue;
+						}
+						//open fifo and write the message
+						char *fifo_path = malloc(buf_size);
+						snprintf(fifo_path,buf_size,"%s%s",room_path,dir->d_name);
+						fd1 = open(fifo_path,O_WRONLY);
+						write(fd1, message_to_send, strlen(message_to_send)+1);
+						close(fd1);
+
+					}
+				}
+				closedir(room);
+			} else {
+				/* failed for some other reason. */
+				printf("problem with opening directory.\n");
+				exit(1);
+			}
+
+		}
+	}
+
+	while (1)
+	{
+		fd1 = open(user_path,O_RDONLY);
+		read(fd1, r_end, buf_size*2);
+		// Print the read and close 
+		printf("\r%*s",250,"");
+		printf("\033[A\r%s",r_end);
+		printf("%s: <write your message>",user_name);
+		close(fd1);
+	}
 }
 int wiseman(char ** args){
 	printf("hi I'm wiseman\n");
 }
 int dance(char ** args){
-	
+
 	int type = atoi(args[1]);
 	int count = atoi(args[2]) - 1;
 	int i;
 	char dance_l[50];
 	char dance_r[50];
-	
+
 	printf("༼ つ ◕_◕ ༽つ    ");
 	fflush(stdout);
 	sleep(1);
@@ -430,7 +539,7 @@ int dance(char ** args){
 	sleep(1);
 	printf("\rヾ(⌐■_■)ノ♪       \n");
 	fflush(stdout);
-	
+
 }
 int customcmd2(char ** args){
 	printf("hi I'm customcmd2\n");
@@ -530,7 +639,7 @@ int exec_cmd(struct command_t *command){
 	if (!strcmp(dr,"./")) {
 
 		strcpy(true_path, command->name);
-		
+
 	} 
 	//if the program is NOT in the same directory, look for env paths
 	else {
@@ -539,7 +648,7 @@ int exec_cmd(struct command_t *command){
 		char* path = malloc(len*sizeof(char));
 		strcpy(path, buffer);
 		char* token = strtok(path, ":");
-		
+
 		char* paths[500];
 		int i = 0;
 		while (token != NULL) {
@@ -645,11 +754,11 @@ int process_command(struct command_t *command)
 	else
 	{
 		if(!command->background){
-		// TODO: implement background processes here
-		wait(0); // wait for child process to finish if it's not background
+			// TODO: implement background processes here
+			wait(0); // wait for child process to finish if it's not background
 		}
 		return SUCCESS;
-	
+
 	}
 
 	// TODO: your implementation here
