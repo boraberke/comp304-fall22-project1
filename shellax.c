@@ -382,6 +382,7 @@ int uniq(char ** args){
 }
 
 int chatroom(char ** args){
+	setbuf(stdout,NULL);
 	//check if args are given
 	if (args[1] ==NULL || args[2]==NULL){
 		printf("Invalid syntax, correct syntax: chatroom <room> <username>\n");
@@ -409,13 +410,15 @@ int chatroom(char ** args){
 	char *pipe_paths[ROOM_CAPACITY];
 	int i = 0;
 	if (room) {
+		printf("Welcome to %s!\n",room_name);
 		//get the other fifo's into pipe_paths
 		while ((dir = readdir(room)) != NULL) {
 			if(dir->d_type == DT_FIFO){
-				printf("%s\n", dir->d_name);
+				if(strcmp(dir->d_name,user_name)==0){
+					continue;
+				}
 				char *temp_path = malloc(buf_size);
 				snprintf(temp_path,buf_size,"%s%s",room_path,dir->d_name);	
-				//strcpy(pipe_paths[i], temp_path);
 				pipe_paths[i] = temp_path;
 				i++;
 			}
@@ -435,15 +438,7 @@ int chatroom(char ** args){
 
 	int pipe_check = mkfifo(user_path, 0666);
 
-	if (!pipe_check) {
-		// pipe has been created
-		// add it to pipe_paths
-		pipe_paths[i] = user_path;
-		i++;
-	} else if (EEXIST == errno) {
-		/* named pipe exist, continue. */
-		printf("named pipe exists.\n");
-	} else {
+	if (pipe_check && EEXIST != errno) {
 		/* failed for some other reason. */
 		printf("problem with named pipe.\n");
 		exit(1);
@@ -458,9 +453,15 @@ int chatroom(char ** args){
 
 		printf("%s: <write your message>",user_name);
 		fgets(str2, buf_size*2, stdin);
-			for(int j=0;j<i;j++){
+		// add room name and user name in front
+		char message_to_send[buf_size*3];
+		snprintf(message_to_send, sizeof(message_to_send), "[%s] %s: %s", room_name, user_name, str2);
+		//print your message here	
+		printf("\033[A\r%*s",250,"");
+		printf("\033[A\r%s",message_to_send);
+		for(int j=0;j<i;j++){
 				fd1 = open(pipe_paths[j],O_WRONLY);
-				write(fd1, str2, strlen(str2)+1);
+				write(fd1, message_to_send, strlen(message_to_send)+1);
 				close(fd1);
 			}	
 		}
@@ -471,7 +472,9 @@ int chatroom(char ** args){
 	fd1 = open(user_path,O_RDONLY);
 	read(fd1, str1, buf_size*2);
 	// Print the read and close 
-	printf("\r%s\n", str1);
+		printf("\r%*s",250,"");
+		printf("\r%s",str1);
+		printf("%s: <write your message>",user_name);
 	}
 
 	close(fd1);
