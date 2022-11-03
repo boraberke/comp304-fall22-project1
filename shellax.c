@@ -499,7 +499,7 @@ int wiseman(char ** args) {
 	sprintf(buff, "*/%d * * * * fortune | espeak\n", interval);
 	char* file_name = "crontab.txt";
 	FILE* file = fopen(file_name, "w");
-	fprintf(file, buff);
+	fprintf(file, "%s", buff);
 	fclose(file);
 	execlp("crontab", "crontab", file_name, NULL);
 
