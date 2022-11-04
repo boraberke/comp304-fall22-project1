@@ -6,6 +6,7 @@ import time
 import os
 import sys
 import argparse
+import signal
 
 
 class Squares(Enum):
@@ -229,13 +230,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A simple and fun classic snake game!')
     parser.add_argument("--speed", default=3, type=float, choices=range(1,11),help="the speed of the game. Between 1 and 10")
     parser.add_argument("--frame", default="medium", type=str, choices=["small","medium","large"],help="Size of the frame. small, medium, or big.")
-
+    
+    #to handle ctrl+c correctly
+    signal.signal(signal.SIGINT, lambda x, y: sys.exit(0))
+    
     args = parser.parse_args()
+    # run snake game
     snake = SnakeGame(args.speed,args.frame)
     snake.run()
-
-
-
-
-
 
