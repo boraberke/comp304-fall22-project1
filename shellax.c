@@ -547,16 +547,17 @@ int dance(char ** args) {
 	printf("\rヾ(⌐■ _■ )ノ♪       \n");
 	sleep(1);
 }
-int customcmd2(char ** args){
-	printf("hi I'm customcmd2\n");
+int snake(char ** args){
+
+	execv("snake", args);
 }
 int psvis(char ** args){
 	printf("hi I'm psvis\n");
 }
 
 typedef int (*builtin_cmd) (char **);
-builtin_cmd builtin_cmds[NUM_OF_BUILTIN_CMDS] =  {&uniq, &chatroom, &wiseman, &dance, &customcmd2, &psvis};
-const char *builtin_cmd_names[NUM_OF_BUILTIN_CMDS] = {"uniq", "chatroom", "wiseman", "dance", "customcmd2", "psvis"};
+builtin_cmd builtin_cmds[NUM_OF_BUILTIN_CMDS] =  {&uniq, &chatroom, &wiseman, &dance, &snake, &psvis};
+const char *builtin_cmd_names[NUM_OF_BUILTIN_CMDS] = {"uniq", "chatroom", "wiseman", "dance", "snake", "psvis"};
 
 
 int process_command(struct command_t *command);
