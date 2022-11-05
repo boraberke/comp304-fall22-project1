@@ -548,11 +548,13 @@ int dance(char ** args) {
 	sleep(1);
 }
 int snake(char ** args){
-
 	execv("snake", args);
 }
 int psvis(char ** args){
-	printf("hi I'm psvis\n");
+	char buff[50];
+	sprintf(buff, "sudo insmod psvis.ko PID=%d image=%s", args[1], args[2]);
+	system(buff);
+	system("sudo rmmod psvis.ko");
 }
 
 typedef int (*builtin_cmd) (char **);
