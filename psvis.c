@@ -8,41 +8,52 @@
 
 // Meta Information
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("ME");
-MODULE_DESCRIPTION("A module that knows how to greet");
+MODULE_AUTHOR("BUSRA-BORA");
+MODULE_DESCRIPTION("A module that draws the tree graph of a parent process.");
 
-char *name;
-int age;
+int PID;
+char* image;
 
-/*
- * module_param(foo, int, 0000)
- * The first param is the parameters name
- * The second param is it's data type
- * The final argument is the permissions bits,
- * for exposing parameters in sysfs (if non-zero) at a later stage.
- */
+module_param(PID, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+MODULE_PARM_DESC(PID, "input PID of the parent process");
 
-module_param(name, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-MODULE_PARM_DESC(name, "name of the caller");
+module_param(image, charp, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+MODULE_PARM_DESC(name, "name of the output image file");
 
-module_param(age, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-MODULE_PARM_DESC(age, "age of the caller");
+// A function that traverses through processes and draws the graph.
+int psvis_init(void) {
+  struct task_struct* parent;
+  struct task_struct* child;
+  struct list_head* next_child;
 
-// A function that runs when the module is first loaded
-int simple_init(void) {
-  struct task_struct *ts;
-
-  ts = get_pid_task(find_get_pid(4), PIDTYPE_PID);
-
-  printk("Hello from the kernel, user: %s, age: %d\n", name, age);
-  printk("command: %s\n", ts->comm);
+  parent = get_pid_task(find_get_pid(PID), PIDTYPE_PID);
+  FILE* image_file;
+  //draw
+  list_for_each(next_child, &parent->children) {
+    child = list_entry(next_child, struct task_struct, sibling);
+    //draw
+    psvis_recursive(child, image_file);
+  }
   return 0;
 }
 
-// A function that runs when the module is removed
-void simple_exit(void) {
-  printk("Goodbye from the kernel, user: %s, age: %d\n", name, age);
+//Recursively drawing nodes.
+void psvis_recursive(struct task_struct* process, FILE* image_file) {
+
+  struct task_struct* child;
+  struct list_head* next_child;
+
+  list_for_each(next_child, &process->children) {
+    child = list_entry(next_child, struct task_struct, sibling);
+    //draw
+    psvis_recursive(child, image_file);
+  }
 }
 
-module_init(simple_init);
-module_exit(simple_exit);
+// A function that exits the kernel.
+void psvis_exit(void) {
+  //printk("Goodbye from the kernel, user: %s, age: %d\n", name, age);
+}
+
+module_init(psvis_init);
+module_exit(psvis_exit);
