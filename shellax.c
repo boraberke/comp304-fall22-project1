@@ -552,14 +552,15 @@ int snake(char ** args){
 }
 int psvis(char ** args){
 	char buff[50];
-	int x, y = 50;
-	sprintf(buff, "sudo insmod psvis.ko PID=%d image=%s x=%d y=%d", atoi(args[1]), args[2], x, y);
+	sprintf(buff, "sudo insmod psvis.ko PID=%d", atoi(args[1]));
 	system(buff);
-	system("sudo rmmod psvis.ko");
+	system("sudo rmmod psvis");
 	//draw
 
-	char* commands[] = {};
-	FILE* gnu_pipe = popen("gnuplot -persistent", "w");
+	FILE* data = fopen("data.txt", "w");
+	fprintf(data, "PID\tParent\tLabel\n");
+	//char* commands[] = {};
+	//FILE* gnu_pipe = popen("gnuplot -persistent", "w");
 }
 
 typedef int (*builtin_cmd) (char **);
