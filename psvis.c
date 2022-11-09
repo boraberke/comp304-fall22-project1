@@ -32,7 +32,7 @@ int psvis_init(void) {
   list_for_each(next_child, &parent->children) {
     child = list_entry(next_child, struct task_struct, sibling);
     start_time = child->start_time;
-    pid_t pid_c = child->pid;
+    pid_t pid = child->pid;
     char buff_c[50];
     sprintf(buff_c, "%d\t%d\tPID=%dStart time=%lld\n", pid, PID, pid, start_time);
     printk("%s", buff_c);

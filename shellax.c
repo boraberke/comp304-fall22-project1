@@ -556,9 +556,9 @@ int psvis(char ** args){
 	system(buff);
 	system("sudo rmmod psvis");
 	//draw
-
 	FILE* data = fopen("data.txt", "w");
 	fprintf(data, "PID\tParent\tLabel\n");
+	system("sudo dmesg | grep 'Start time' >> data.txt");
 	//char* commands[] = {};
 	//FILE* gnu_pipe = popen("gnuplot -persistent", "w");
 }
