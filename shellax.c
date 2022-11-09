@@ -548,11 +548,20 @@ int dance(char ** args) {
 	sleep(1);
 }
 int snake(char ** args){
-
 	execv("snake", args);
 }
 int psvis(char ** args){
-	printf("hi I'm psvis\n");
+	char buff1[50];
+	sprintf(buff1, "sudo dmesg -C; sudo insmod psvis.ko PID=%d", atoi(args[1]));
+	system(buff1);
+	system("sudo rmmod psvis");
+	//draw
+	FILE* data = fopen("data.txt", "w");
+	system("echo \"graph {\n\" > data.txt; sudo dmesg | cut -d ] -f2 | grep 'Start time' >> data.txt; echo \"}\n\" > data.txt");
+	char buff2[50];
+	sprintf(buff2, "cat data.txt | dot -Tpng > %s.png", args[2]);
+	system(buff2);
+
 }
 
 typedef int (*builtin_cmd) (char **);
