@@ -17,42 +17,47 @@ void psvis_recursive(struct task_struct* process);
 module_param(PID, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(PID, "input PID of the parent process");
 
-// A function that traverses through processes and saves data on a file.
+// A function that traverses through processes and prints data onto kernel.
 int psvis_init(void) {
   struct task_struct* parent;
-  struct task_struct* child;
-  struct list_head* next_child;
 
   parent = get_pid_task(find_get_pid(PID), PIDTYPE_PID);
   if(!parent) {
     printk("No such process exists.\n");
     return -1;
   }
-  u64 start_time_p = parent->start_time;
   printk("Hiii\n");
-  list_for_each(next_child, &parent->children) {
-    child = list_entry(next_child, struct task_struct, sibling);
-    u64 start_time_c = child->start_time;
-    pid_t pid = child->pid;
-    printk("\t\"PID=%d Start time=%lld\" -- \"PID=%d Start time=%lld\";\n", PID, start_time_p, pid, start_time_c);
-    psvis_recursive(child);
-  }
+  psvis_recursive(parent);
   return 0;
 }
 
 //Recursively saving information about nodes.
-void psvis_recursive(struct task_struct* process) {
+void psvis_recursive(struct task_struct* parent) {
 
   struct task_struct* child;
   struct list_head* next_child;
-  u64 start_time_p = process->start_time;
-  pid_t PID = process->pid;
+  u64 start_time_p = parent->start_time;
+  pid_t pid_p = parent->pid;
 
-  list_for_each(next_child, &process->children) {
+  //Finding the oldest child to colour in a different colour.
+  struct task_struct* youngest_child = parent->p_cptr;
+  struct task_struct* oldest_child;
+  pid_t pid_o;
+  if (youngest_child) {
+    oldest_child = youngest_child->p_osptr;
+  }
+
+  list_for_each(next_child, &parent->children) {
     child = list_entry(next_child, struct task_struct, sibling);
     u64 start_time_c = child->start_time;
-    pid_t pid = child->pid;
-    printk("\t\"PID=%d Start time=%lld\" -- \"PID=%d Start time=%lld\";\n", PID, start_time_p, pid, start_time_c);
+    pid_t pid_c = child->pid;
+    if (oldest_child) {
+      pid_o = oldest_child->pid;
+      if (pid_o == pid_c) {
+        printk("\t\"PID=%d Start time=%lld\"[fillcolor=red, style=filled];\n",pid_c, start_time_c);
+      }
+    }
+    printk("\t\"PID=%d Start time=%lld\" -- \"PID=%d Start time=%lld\";\n", pid_p, start_time_p, pid_c, start_time_c);
     psvis_recursive(child);
   }
 }
