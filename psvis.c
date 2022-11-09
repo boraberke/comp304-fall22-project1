@@ -11,7 +11,7 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("BUSRA-BORA");
 MODULE_DESCRIPTION("A module that draws the tree graph of a parent process.");
 
-int PID = 1; //initial value so if no parameter passed, no bug occurs.
+int PID; //initial value so if no parameter passed, no bug occurs.
 void psvis_recursive(struct task_struct* process);
 
 module_param(PID, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -25,18 +25,16 @@ int psvis_init(void) {
 
   parent = get_pid_task(find_get_pid(PID), PIDTYPE_PID);
   if(!parent) {
-    printk("No such process exists.");
+    printk("No such process exists.\n");
     return -1;
   }
   u64 start_time_p = parent->start_time;
-
+  printk("Hiii\n");
   list_for_each(next_child, &parent->children) {
     child = list_entry(next_child, struct task_struct, sibling);
     u64 start_time_c = child->start_time;
     pid_t pid = child->pid;
-    char buff_c[50];
-    sprintf(buff_c, "\tPID=%dStart time=%lld -- PID=%dStart time=%lld;\n", PID, start_time_p, pid, start_time_c);
-    printk("%s", buff_c);
+    printk("\t\"PID=%d Start time=%lld\" -- \"PID=%d Start time=%lld\";\n", PID, start_time_p, pid, start_time_c);
     psvis_recursive(child);
   }
   return 0;
@@ -48,22 +46,20 @@ void psvis_recursive(struct task_struct* process) {
   struct task_struct* child;
   struct list_head* next_child;
   u64 start_time_p = process->start_time;
-  pid_t PID = parent->pid;
+  pid_t PID = process->pid;
 
   list_for_each(next_child, &process->children) {
     child = list_entry(next_child, struct task_struct, sibling);
     u64 start_time_c = child->start_time;
     pid_t pid = child->pid;
-    char buff_c[50];
-    sprintf(buff_c, "\tPID=%dStart time=%lld -- PID=%dStart time=%lld;\n", PID, start_time_p, pid, start_time_c);
-    printk("%s", buff_c);
+    printk("\t\"PID=%d Start time=%lld\" -- \"PID=%d Start time=%lld\";\n", PID, start_time_p, pid, start_time_c);
     psvis_recursive(child);
   }
 }
 
 // A function that exits the kernel.
 void psvis_exit(void) {
-  printk("byee");
+  printk("byee\n");
 }
 
 module_init(psvis_init);
