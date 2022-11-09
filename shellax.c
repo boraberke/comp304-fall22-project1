@@ -551,16 +551,19 @@ int snake(char ** args){
 	execv("snake", args);
 }
 int psvis(char ** args){
-	char buff[50];
-	sprintf(buff, "sudo insmod psvis.ko PID=%d", atoi(args[1]));
-	system(buff);
+	char buff1[50];
+	sprintf(buff1, "sudo insmod psvis.ko PID=%d", atoi(args[1]));
+	system(buff1);
 	system("sudo rmmod psvis");
 	//draw
 	FILE* data = fopen("data.txt", "w");
-	fprintf(data, "PID\tParent\tLabel\n");
+	fprintf(data, "graph {\n");
 	system("sudo dmesg | grep 'Start time' >> data.txt");
-	//char* commands[] = {};
-	//FILE* gnu_pipe = popen("gnuplot -persistent", "w");
+	fprintf(data, "}\n");
+	char buff2[50];
+	sprintf(buff2, "cat data.txt | dot -Tpng > %s.png", args[2]);
+	system(buff2);
+
 }
 
 typedef int (*builtin_cmd) (char **);
