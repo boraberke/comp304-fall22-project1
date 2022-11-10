@@ -557,7 +557,7 @@ int psvis(char ** args){
 	system("sudo rmmod psvis");
 	//draw
 	FILE* data = fopen("data.txt", "w");
-	system("echo \"graph {\n\" > data.txt; sudo dmesg | cut -d ] -f2 | grep 'Start time' >> data.txt; echo \"}\n\" > data.txt");
+	system("echo \"graph {\n\" > data.txt; sudo dmesg | cut -d [ -f2- | cut -d ] -f2- | grep 'Start time' >> data.txt; echo \"}\n\" >> data.txt");
 	char buff2[50];
 	sprintf(buff2, "cat data.txt | dot -Tpng > %s.png", args[2]);
 	system(buff2);
