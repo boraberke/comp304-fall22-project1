@@ -40,11 +40,18 @@ void psvis_recursive(struct task_struct* parent) {
   pid_t pid_p = parent->pid;
 
   //Finding the oldest child to colour in a different colour.
-  struct task_struct* youngest_child = parent->p_cptr;
   struct task_struct* oldest_child;
+  struct task_struct* child1;
   pid_t pid_o;
-  if (youngest_child) {
-    oldest_child = youngest_child->p_osptr;
+  u64 min=18446744073709551615;
+  list_for_each(next_child, &parent->children) {
+    child1 = list_entry(next_child, struct task_struct, sibling);
+    u64 start_time_c = child1->start_time;
+    if (start_time_c <= min){
+      min = start_time_c;
+      oldest_child = child1;
+      pid_o = oldest_child->pid;
+    }
   }
 
   list_for_each(next_child, &parent->children) {
@@ -52,7 +59,6 @@ void psvis_recursive(struct task_struct* parent) {
     u64 start_time_c = child->start_time;
     pid_t pid_c = child->pid;
     if (oldest_child) {
-      pid_o = oldest_child->pid;
       if (pid_o == pid_c) {
         printk("\t\"PID=%d Start time=%lld\"[fillcolor=red, style=filled];\n",pid_c, start_time_c);
       }
