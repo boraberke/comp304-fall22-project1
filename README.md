@@ -89,14 +89,18 @@ This command has two inputs: the first one is an integer indicating which of the
 ```
 dance 1 3
 ```
+![dance1](https://user-images.githubusercontent.com/79407881/201546613-ecadf4ae-9e7e-4c8a-a21c-8602c1f6cd6a.gif)
 
 ```
 dance 2 3
 ```
+![dance2](https://user-images.githubusercontent.com/79407881/201546625-a1b716c9-efd1-454d-8280-de52b3f5c8d0.gif)
 
 ```
 dance 3 3
 ```
+![dance3](https://user-images.githubusercontent.com/79407881/201546639-13492039-6f4c-448f-a6d4-681d67b89494.gif)
+
 ### Psvis Command
 
 Enter a PID of a process and an image output name for the child processes of that process as a tree graph, eldest children of each process colored red.
