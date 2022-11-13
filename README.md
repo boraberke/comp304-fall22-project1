@@ -15,6 +15,14 @@ gcc shellax.c -o shellax
 ./shellax
 ```
 
+## Background Processes
+
+Use the following format to run any process in the background in the shell.
+
+```
+<command name> <args> &
+```
+
 ## Function Usages
 
 
@@ -52,6 +60,11 @@ Then start chatting!
 
 ### Wiseman Command
 
+Give an integer specifying how often a quote is voice overed in terms of minutes.
+
+```
+wiseman 5
+```
 
 ### Bora's Custom Command `snake`
 ```
@@ -71,4 +84,23 @@ optional arguments:
 
 ### Busra's Custom Command `dance`
 
+This command has two inputs: the first one is an integer indicating which of the three dances you want to be displayed and the second one is an integer indicating how many times you want the animation to be played.
+
+```
+dance 1 3
+```
+
+```
+dance 2 3
+```
+
+```
+dance 3 3
+```
 ### Psvis Command
+
+Enter a PID of a process and an image output name for the child processes of that process as a tree graph, eldest children of each process colored red.
+
+```
+psvis 1 image
+```
